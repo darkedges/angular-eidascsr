@@ -2,6 +2,8 @@
 
 This project is inspired by [https://github.com/creditkudos/eidas/](https://github.com/creditkudos/eidas/) and was generated with [Angular CLI](https://github.com/angular/angular-cli) version 9.0.1.
 
+The demo site is [https://eidascsr.darkedges.com/](https://eidascsr.darkedges.com/)
+
 ## Development server
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
