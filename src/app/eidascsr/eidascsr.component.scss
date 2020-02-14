@@ -1,0 +1,43 @@
+mat-form-field {
+    width: 100%;
+}
+
+.mat-select {
+    ::ng-deep .mat-select-content {
+        width: 100%;
+    }
+}
+
+.mat-select-disabled {
+    ::ng-deep .mat-select-value {
+        color: black;
+    }
+}
+
+.tarea {
+    font-family: monospace;
+    font-size: 0.8em;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.docs-example-source-copy {
+    position: absolute;
+    top: 8px;
+    display: none;
+}
+
+.docs-example-source-wrapper:hover {
+    .docs-example-source-copy {
+        display: inline-block;
+    }
+}
+
+.docs-example-source {
+    padding: 0 30px 10px 30px;
+    min-height: 150px;
+}
+
+.cardPadding {
+    margin-bottom: 16px;
+}

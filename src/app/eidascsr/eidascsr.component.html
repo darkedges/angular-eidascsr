@@ -1,0 +1,124 @@
+<mat-horizontal-stepper linear #stepper [@.disabled]="true" [linear]="isLinear">
+  <mat-step [stepControl]="eidascsr">
+    <ng-template matStepLabel>Fill out your Organisation Details</ng-template>
+    <form autocomplete="off" novalidate [formGroup]="eidascsr">
+      <mat-card class="cardPadding">
+        <mat-card-header>
+          <mat-card-title>Organisation Details</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field>
+            <mat-label>Country Name</mat-label>
+            <mat-select formControlName="countryName" name="countryName" required>
+              <mat-option *ngFor="let code of countryIds" [value]="code">
+                {{code}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="hasError('','countryName', 'required')">Country Name is required</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <input matInput type="text" placeholder="Organisation Name *" formControlName="organizationName"
+              id="organizationName">
+            <mat-error *ngIf="hasError('','organizationName', 'required')">Organisation Name is required</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <input matInput type="text" placeholder="Organisation Identifier *" formControlName="organizationIdentifier"
+              id="organizationIdentifier">
+            <mat-error *ngIf="hasError('','organizationIdentifier', 'required')">Organisation Identifier is required
+            </mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <input matInput type="text" placeholder="Common Name *" formControlName="commonName" id="commonName">
+            <mat-error *ngIf="hasError('','commonName', 'required')">Common Name is required</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Roles</mat-label>
+            <mat-select formControlName="roles" name="roles" multiple required>
+              <mat-option *ngFor="let role of roles" [value]="role">
+                {{role.Name}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="hasError('','roles', 'required')">Roles is required</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Certificate Type</mat-label>
+            <mat-select formControlName="type" name="type" required>
+              <mat-option *ngFor="let type of types" [value]="type">
+                {{type}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="hasError('','type', 'required')">Certificate Type is required</mat-error>
+          </mat-form-field>
+        </mat-card-content>
+        <mat-card-actions align="center">
+          <button matStepperNext mat-raised-button color="primary" [disabled]="!(eidascsr.valid)"
+            (click)="createOwner()">Next</button>
+        </mat-card-actions>
+      </mat-card>
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Notes:</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <ul>
+            <li>This is for educational purpose only to prove that an eIDAS Certificate Signing Request can be
+              genereated in
+              the browser. </li>
+            <li>Nothing is stored in the browser and it is 100% client side generated, with no interaction with a
+              server. You can check this by using the Developer tools in the browser.</li>
+          </ul>
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </mat-step>
+  <mat-step [stepControl]="certificates">
+    <form [formGroup]="certificates" fxLayout="column">
+      <ng-template matStepLabel>
+        <p (click)="createOwner()">View your Key Details</p>
+      </ng-template>
+      <mat-card class="cardPadding">
+        <mat-card-header>
+          <mat-card-title>Your Key Details</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="input-row" fxLayout="column" fxLayoutGap="0px">
+            <mat-form-field fxFlex>
+              <textarea class="tarea" matInput placeholder="Private Key" formControlName="privateKey" readonly="true"
+                cdkTextareaAutosize>
+                          </textarea>
+              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="pkToClipoard()">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </mat-form-field>
+            <mat-form-field fxFlex>
+              <textarea class="tarea" matInput placeholder="Certificate Signing Request" formControlName="csr"
+                readonly="true" cdkTextareaAutosize cdkAutosizeMinRows="2">
+                      </textarea>
+              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="csrToClipoard()">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+        <mat-card-actions align="center">
+          <button matStepperNext mat-raised-button color="primary" [disabled]="!(certificates.valid)"
+            (click)="downloadFiles()">Download</button>
+        </mat-card-actions>
+      </mat-card>
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Notes:</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <ul>
+            <li>Due to limitations of <a href="https://stuk.github.io/jszip/">JSZip</a> the downloaded file is not
+              password protected. No responsbility is accepted if this key is downloaded and used. If you want to you
+              could always add your own password.
+            </li>
+
+          </ul>
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </mat-step>
+</mat-horizontal-stepper>
