@@ -90,29 +90,19 @@ export class PKCS10Service {
     }));
 
     pkcs10.attributes = [];
-    // region Get default algorithm parameters for key generation
-    let algorithm;
-    if (type === 'QSEAL') {
-      algorithm = getAlgorithmParameters(this.signQSealAlg, 'generatekey');
-    } else {
-      algorithm = getAlgorithmParameters(this.signQWACAlg, 'generatekey');
-    }
-    if ('hash' in algorithm.algorithm) {
-      algorithm.algorithm.hash.name = this.hashAlg;
-    }
-    // end region
-
     const bitArray = new ArrayBuffer(1);
     const bitView = new Uint8Array(bitArray);
-
-    let extKeyUsage;
-
     let qcType;
+    let extKeyUsage;
+    let algorithm;
+
     if (type === 'QSEAL') {
+      algorithm = getAlgorithmParameters(this.signQSealAlg, 'generatekey');
       bitView[0] |= 0x80; // DigitalSignature
       bitView[0] |= 0x40; // NonRepudiation
       qcType = qcstatements.QSEALType;
     } else {
+      algorithm = getAlgorithmParameters(this.signQWACAlg, 'generatekey');
       bitView[0] |= 0x80; // DigitalSignature
       qcType = qcstatements.QWACType;
       extKeyUsage = new ExtKeyUsage({
@@ -121,6 +111,9 @@ export class PKCS10Service {
           '1.3.6.1.5.5.7.3.2', // id-kp-clientAuth
         ]
       });
+    }
+    if ('hash' in algorithm.algorithm) {
+      algorithm.algorithm.hash.name = this.hashAlg;
     }
 
     const keyUsage = new asn1js.BitString({ valueHex: bitArray });

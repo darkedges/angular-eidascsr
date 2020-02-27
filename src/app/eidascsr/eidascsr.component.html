@@ -42,13 +42,17 @@
           </mat-form-field>
           <mat-form-field>
             <mat-label>Certificate Type</mat-label>
-            <mat-select formControlName="type" name="type" required>
+            <mat-select formControlName="type" name="type" required [disabled]="eidascsr.get('signed').value">
               <mat-option *ngFor="let type of types" [value]="type">
                 {{type}}
               </mat-option>
             </mat-select>
             <mat-error *ngIf="hasError('','type', 'required')">Certificate Type is required</mat-error>
           </mat-form-field>
+
+
+          <mat-checkbox formControlName="signed" labelPosition="before">Sign</mat-checkbox>
+
         </mat-card-content>
         <mat-card-actions align="center">
           <button matStepperNext mat-raised-button color="primary" [disabled]="!(eidascsr.valid)"
@@ -99,8 +103,8 @@
               </button>
             </mat-form-field>
             <mat-form-field fxFlex>
-              <textarea class="tarea" matInput placeholder="Public Key" formControlName="publicKey"
-                readonly="true" cdkTextareaAutosize cdkAutosizeMinRows="2">
+              <textarea class="tarea" matInput placeholder="Public Key" formControlName="publicKey" readonly="true"
+                cdkTextareaAutosize cdkAutosizeMinRows="2">
                       </textarea>
               <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="publicKeyToClipoard()">
                 <mat-icon>content_copy</mat-icon>
