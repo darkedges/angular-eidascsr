@@ -12,6 +12,9 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { NgcCookieConsentConfig, NgcCookieConsentModule } from 'ngx-cookieconsent';
 import { NgModule } from '@angular/core';
+import { defaultDataServiceConfig } from './default-service.config';
+import { DefaultDataServiceConfig } from './default-data-service-config';
+import { HttpClientModule } from '@angular/common/http';
 const cookieConfig: NgcCookieConsentConfig = {
   cookie: {
     domain: 'localhost' // or 'your.domain.com' // it is mandatory to set a domain, for cookies to work properly (see https://goo.gl/S2Hy2A)
@@ -52,6 +55,7 @@ const cookieConfig: NgcCookieConsentConfig = {
     FormsModule,
     ReactiveFormsModule,
     FlexLayoutModule,
+    HttpClientModule,
 
     MatButtonModule,
     MatCardModule,
@@ -63,6 +67,8 @@ const cookieConfig: NgcCookieConsentConfig = {
     ClipboardModule,
     MatIconModule,
   ],
-  providers: []
+  providers: [
+    { provide: DefaultDataServiceConfig, useValue: defaultDataServiceConfig }
+],
 })
 export class SharedModule { }

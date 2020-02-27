@@ -86,7 +86,7 @@
               <textarea class="tarea" matInput placeholder="Private Key" formControlName="privateKey" readonly="true"
                 cdkTextareaAutosize>
                           </textarea>
-              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="pkToClipoard()">
+              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="privateKeyToClipoard()">
                 <mat-icon>content_copy</mat-icon>
               </button>
             </mat-form-field>
@@ -98,6 +98,22 @@
                 <mat-icon>content_copy</mat-icon>
               </button>
             </mat-form-field>
+            <mat-form-field fxFlex>
+              <textarea class="tarea" matInput placeholder="Public Key" formControlName="publicKey"
+                readonly="true" cdkTextareaAutosize cdkAutosizeMinRows="2">
+                      </textarea>
+              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="publicKeyToClipoard()">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </mat-form-field>
+            <mat-form-field fxFlex>
+              <textarea class="tarea" matInput placeholder="Public / Private JWKS" formControlName="jwks"
+                readonly="true" cdkTextareaAutosize cdkAutosizeMinRows="2">
+                      </textarea>
+              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="jwksToClipoard()">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </mat-form-field>'
           </div>
         </mat-card-content>
         <mat-card-actions align="center">

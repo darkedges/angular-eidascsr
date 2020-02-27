@@ -1,12 +1,14 @@
+import * as jose from 'node-jose';
 import * as JSZip from 'jszip';
 import * as qcStatement from '../models/qcstatement.class';
 import { arrayBufferToString, toBase64 } from 'pvutils';
 import { Component, OnInit } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
+import { flatMap, tap } from 'rxjs/operators';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PKCS10Service } from '../services/pkcs10.service';
-import { tap } from 'rxjs/operators';
 import { saveAs } from 'file-saver';
+import { from } from 'rxjs';
 
 @Component({
   selector: 'app-eidascsr',
@@ -23,8 +25,7 @@ export class EidascsrComponent implements OnInit {
 
   constructor(
     private formBuilder: FormBuilder,
-    private pkcs10Service: PKCS10Service,
-    private sanitizer: DomSanitizer
+    private pkcs10Service: PKCS10Service
   ) { }
 
   ngOnInit(): void {
@@ -38,7 +39,9 @@ export class EidascsrComponent implements OnInit {
     });
     this.certificates = this.formBuilder.group({
       privateKey: [''],
-      csr: ['']
+      csr: [''],
+      publicKey: [''],
+      jwks: ['']
     });
   }
 
@@ -55,9 +58,6 @@ export class EidascsrComponent implements OnInit {
   }
 
   formatPEM(pemString) {
-    /// <summary>Format string in order to have each line with length equal to 63</summary>
-    /// <param name="pemString" type="String">String to format</param>
-
     const stringLength = pemString.length;
     let resultString = '';
 
@@ -75,7 +75,9 @@ export class EidascsrComponent implements OnInit {
 
   public createOwner = () => {
     let privateKey;
+    let publicKey;
     let csr;
+    let kid;
 
     const countryName = this.eidascsr.value.countryName;
     const organizationName = this.eidascsr.value.organizationName;
@@ -83,20 +85,40 @@ export class EidascsrComponent implements OnInit {
     const commonName = this.eidascsr.value.commonName;
     const type = this.eidascsr.value.type;
     const roles = this.eidascsr.value.roles;
-
+    const privateKeystore = jose.JWK.createKeyStore();
+    const publicKeystore = jose.JWK.createKeyStore();
 
     this.pkcs10Service.createCSR(countryName, organizationName, organizationIdentifier, commonName, roles, type).pipe(
       tap(data => {
         privateKey = '-----BEGIN PRIVATE KEY-----\n';
-        privateKey = `${privateKey}${this.formatPEM(toBase64(arrayBufferToString(data.pk)))}`;
+        privateKey = `${privateKey}${this.formatPEM(toBase64(arrayBufferToString(data.pk.pkcs8)))}`;
         privateKey = `${privateKey}\n-----END PRIVATE KEY-----`;
-
         csr = '-----BEGIN NEW CERTIFICATE REQUEST-----\n';
         csr = `${csr}${this.formatPEM(toBase64(arrayBufferToString(data.csr)))}`;
         csr = `${csr}\n-----END NEW CERTIFICATE REQUEST-----`;
+      }),
+      flatMap(data => {
+        kid = data.pk.jwk.kid;
+        return from(privateKeystore.add(data.pk.jwk, 'json'));
+      }),
+      flatMap(data => {
+        return this.pkcs10Service.getPublicKey(csr);
+      })
+      ,
+      flatMap(data => {
+        publicKey = data.result.certificate;
+        return from(publicKeystore.add(publicKey, 'pem', { kid }));
       })
     ).subscribe(result => {
-      this.certificates.patchValue({ csr, privateKey });
+      this.certificates.patchValue({
+        csr,
+        privateKey,
+        publicKey,
+        jwks: JSON.stringify({
+          publicJwks: publicKeystore.toJSON(true),
+          privateJwks: publicKeystore.toJSON(true)
+        }, null, 2)
+      });
     });
   }
 
@@ -104,15 +126,26 @@ export class EidascsrComponent implements OnInit {
     return this.certificates.value.csr;
   }
 
-  pkToClipoard() {
+  privateKeyToClipoard() {
     return this.certificates.value.privateKey;
   }
+
+  publicKeyToClipoard() {
+    return this.certificates.value.publicKey;
+  }
+
+  jwksToClipoard() {
+    return this.certificates.value.jwks;
+  }
+
 
   downloadFiles() {
     const organizationIdentifier = this.eidascsr.value.organizationIdentifier;
     const j: JSZip = new JSZip();
     j.file(`${organizationIdentifier}.key`, this.certificates.value.privateKey);
     j.file(`${organizationIdentifier}.csr`, this.certificates.value.csr);
+    j.file(`${organizationIdentifier}.crt`, this.certificates.value.publicKey);
+    j.file(`${organizationIdentifier}.json`, this.certificates.value.jwks);
     j.generateAsync({ type: 'blob' }).then(data => {
       saveAs(data, `${organizationIdentifier}.zip`);
     });

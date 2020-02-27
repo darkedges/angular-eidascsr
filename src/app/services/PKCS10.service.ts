@@ -5,11 +5,13 @@ import Extension from 'pkijs/src/Extension';
 import Extensions from 'pkijs/src/Extensions';
 import { Injectable } from '@angular/core';
 import { flatMap, map } from 'rxjs/operators';
-import { from, Observable, throwError } from 'rxjs';
+import { from, Observable, throwError, forkJoin } from 'rxjs';
 import { getAlgorithmParameters, getCrypto } from 'pkijs/src/common';
 import Attribute from 'pkijs/src/Attribute';
 import ExtKeyUsage from 'pkijs/src/ExtKeyUsage';
 import * as qcstatements from '../models/qcstatement.class';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { DefaultDataServiceConfig } from '../shared/default-data-service-config';
 
 
 
@@ -19,7 +21,38 @@ import * as qcstatements from '../models/qcstatement.class';
 export class PKCS10Service {
   hashAlg = 'SHA-1';
   signAlg = 'RSASSA-PKCS1-v1_5';
-  constructor() { }
+
+  protected getDelay = 0;
+  protected timeout = 0;
+  protected saveDelay = 0;
+  protected delete404OK: boolean;
+  protected root = '';
+
+  constructor(
+    public http: HttpClient,
+    config?: DefaultDataServiceConfig) {
+    const {
+      root = 'api',
+      delete404OK = true,
+      getDelay = 0,
+      saveDelay = 0,
+      timeout: to = 0,
+    } =
+      config || {};
+    this.root = root;
+    this.getDelay = getDelay;
+    this.timeout = to;
+    this.delete404OK = delete404OK;
+    this.saveDelay = saveDelay;
+  }
+
+  getPublicKey(csr): Observable<any> {
+    return this.http.post(`${this.root}/api/v1/cfssl/authsign`, { certificate_request: csr },
+      {
+        headers: this.getRegisterHeaders(),
+        withCredentials: true
+      });
+  }
 
   createCSR(
     countryName: string,
@@ -143,11 +176,19 @@ export class PKCS10Service {
         return from(pkcs10.sign(privateKey, this.hashAlg));
       }),
       flatMap(() => {
-        return from(crypto.exportKey('pkcs8', privateKey));
+        // return from(crypto.exportKey('pkcs8', privateKey));
+        return forkJoin(
+          crypto.exportKey('pkcs8', privateKey),
+          crypto.exportKey('jwk', privateKey)
+        );
       }),
       map((result) => {
+        console.log(result);
         return {
-          pk: result,
+          pk: {
+            pkcs8: result[0],
+            jwk: result[1]
+          },
           csr: pkcs10.toSchema().toBER(false)
         };
       }, err => {
@@ -155,5 +196,10 @@ export class PKCS10Service {
       }
       )
     );
+  }
+  private getRegisterHeaders() {
+    const headers = new HttpHeaders()
+      .append('content-type', 'application/json');
+    return headers;
   }
 }
