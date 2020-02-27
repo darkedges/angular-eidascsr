@@ -138,7 +138,6 @@ export class EidascsrComponent implements OnInit {
     return this.certificates.value.jwks;
   }
 
-
   downloadFiles() {
     const organizationIdentifier = this.eidascsr.value.organizationIdentifier;
     const j: JSZip = new JSZip();

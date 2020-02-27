@@ -20,7 +20,8 @@ import { DefaultDataServiceConfig } from '../shared/default-data-service-config'
 })
 export class PKCS10Service {
   hashAlg = 'SHA-1';
-  signAlg = 'RSASSA-PKCS1-v1_5';
+  signQWACAlg = 'RSASSA-PKCS1-v1_5';
+  signQSealAlg = 'ECDSA';
 
   protected getDelay = 0;
   protected timeout = 0;
@@ -90,7 +91,12 @@ export class PKCS10Service {
 
     pkcs10.attributes = [];
     // region Get default algorithm parameters for key generation
-    const algorithm = getAlgorithmParameters(this.signAlg, 'generatekey');
+    let algorithm;
+    if (type === 'QSEAL') {
+      algorithm = getAlgorithmParameters(this.signQSealAlg, 'generatekey');
+    } else {
+      algorithm = getAlgorithmParameters(this.signQWACAlg, 'generatekey');
+    }
     if ('hash' in algorithm.algorithm) {
       algorithm.algorithm.hash.name = this.hashAlg;
     }
@@ -137,7 +143,6 @@ export class PKCS10Service {
       }
       ),
       flatMap(result => {
-        console.log(result);
         const extensions = [
           new Extension({
             extnID: '2.5.29.15',
@@ -183,7 +188,6 @@ export class PKCS10Service {
         );
       }),
       map((result) => {
-        console.log(result);
         return {
           pk: {
             pkcs8: result[0],
