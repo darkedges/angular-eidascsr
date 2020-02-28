@@ -9,6 +9,8 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PKCS10Service } from '../services/pkcs10.service';
 import { saveAs } from 'file-saver';
 import { from, of } from 'rxjs';
+import { EIDASService } from '../services/eidas.service';
+import { CertificateResponse } from '../models/certificate.interface';
 
 @Component({
   selector: 'app-eidascsr',
@@ -25,7 +27,7 @@ export class EidascsrComponent implements OnInit {
 
   constructor(
     private formBuilder: FormBuilder,
-    private pkcs10Service: PKCS10Service
+    private eidasService: EIDASService
   ) { }
 
   ngOnInit(): void {
@@ -58,28 +60,9 @@ export class EidascsrComponent implements OnInit {
     }
   }
 
-  formatPEM(pemString) {
-    const stringLength = pemString.length;
-    let resultString = '';
 
-    for (let i = 0, count = 0; i < stringLength; i++ , count++) {
-      if (count > 63) {
-        resultString = `${resultString}\n`;
-        count = 0;
-      }
-
-      resultString = `${resultString}${pemString[i]}`;
-    }
-
-    return resultString;
-  }
 
   public createOwner = () => {
-    let privateKey;
-    let publicKey;
-    let csr;
-    let kid;
-
     const countryName = this.eidascsr.value.countryName;
     const organizationName = this.eidascsr.value.organizationName;
     const organizationIdentifier = this.eidascsr.value.organizationIdentifier;
@@ -87,66 +70,16 @@ export class EidascsrComponent implements OnInit {
     const type = this.eidascsr.value.type;
     const roles = this.eidascsr.value.roles;
     const sign = this.eidascsr.value.signed;
-    const privateKeystore = jose.JWK.createKeyStore();
-    const publicKeystore = jose.JWK.createKeyStore();
-
-    if (sign) {
-      this.pkcs10Service.createCSR(countryName, organizationName, organizationIdentifier, commonName, roles, type).pipe(
-        tap(data => {
-          privateKey = '-----BEGIN PRIVATE KEY-----\n';
-          privateKey = `${privateKey}${this.formatPEM(toBase64(arrayBufferToString(data.pk.pkcs8)))}`;
-          privateKey = `${privateKey}\n-----END PRIVATE KEY-----`;
-          csr = '-----BEGIN NEW CERTIFICATE REQUEST-----\n';
-          csr = `${csr}${this.formatPEM(toBase64(arrayBufferToString(data.csr)))}`;
-          csr = `${csr}\n-----END NEW CERTIFICATE REQUEST-----`;
-        }),
-        flatMap(data => {
-          kid = data.pk.jwk.kid;
-          return from(privateKeystore.add(data.pk.jwk, 'json'));
-        }),
-        flatMap(data => {
-          return this.pkcs10Service.getPublicKey(csr);
-        })
-        ,
-        flatMap(data => {
-          publicKey = data.result.certificate;
-          return from(publicKeystore.add(publicKey, 'pem', { kid }));
-        })
-      ).subscribe(result => {
-        this.certificates.patchValue({
-          csr,
-          privateKey,
-          publicKey,
-          jwks: JSON.stringify({
-            publicJwks: publicKeystore.toJSON(true),
-            privateJwks: privateKeystore.toJSON(true)
-          }, null, 2)
-        });
+    this.eidasService.createBundle(
+      countryName, organizationName, organizationIdentifier, commonName, type, roles, sign
+    ).subscribe((data: CertificateResponse) => {
+      this.certificates.patchValue({
+        csr: data.csr,
+        publicKey: data.publicKey,
+        privateKey: data.privateKey,
+        jwks: data.jwks
       });
-    } else {
-      this.pkcs10Service.createCSR(countryName, organizationName, organizationIdentifier, commonName, roles, type).pipe(
-        tap(data => {
-          privateKey = '-----BEGIN PRIVATE KEY-----\n';
-          privateKey = `${privateKey}${this.formatPEM(toBase64(arrayBufferToString(data.pk.pkcs8)))}`;
-          privateKey = `${privateKey}\n-----END PRIVATE KEY-----`;
-          csr = '-----BEGIN NEW CERTIFICATE REQUEST-----\n';
-          csr = `${csr}${this.formatPEM(toBase64(arrayBufferToString(data.csr)))}`;
-          csr = `${csr}\n-----END NEW CERTIFICATE REQUEST-----`;
-        }),
-        flatMap(data => {
-          kid = data.pk.jwk.kid;
-          return from(privateKeystore.add(data.pk.jwk, 'json'));
-        })
-      ).subscribe(result => {
-        this.certificates.patchValue({
-          csr,
-          privateKey,
-          jwks: JSON.stringify({
-            privateJwks: privateKeystore.toJSON(true)
-          }, null, 2)
-        });
-      });
-    }
+    });
   }
 
   csrToClipoard() {
