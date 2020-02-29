@@ -181,6 +181,7 @@ export class PKCS10Service {
         );
       }),
       map((result) => {
+        console.log(pkcs10.toSchema().toBER(false));
         return {
           pk: {
             pkcs8: result[0],

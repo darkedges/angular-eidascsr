@@ -1,16 +1,25 @@
+import * as jose from 'node-jose';
 import * as JSZip from 'jszip';
 import * as qcStatement from '../models/qcstatement.class';
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { saveAs } from 'file-saver';
-import { EIDASService } from '../services/eidas.service';
 import { CertificateResponse } from '../models/certificate.interface';
-import { MatChipInputEvent } from '@angular/material/chips';
-import { MatAutocompleteSelectedEvent, MatAutocomplete } from '@angular/material/autocomplete';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
-import { Observable } from 'rxjs';
-import { startWith, map, tap } from 'rxjs/operators';
+import {
+  Component,
+  ElementRef,
+  OnInit,
+  ViewChild
+} from '@angular/core';
 import { CustomValidators } from './custom.validator';
+import { EIDASService } from '../services/eidas.service';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { map, startWith, tap, mergeMap } from 'rxjs/operators';
+import { MatAutocomplete, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { MatChipInputEvent } from '@angular/material/chips';
+import { Observable, of, forkJoin, empty } from 'rxjs';
+import { saveAs } from 'file-saver';
+import { remove } from 'jszip';
+import { type } from 'os';
+import { resolve } from 'dns';
 
 @Component({
   selector: 'app-eidascsr',
@@ -29,6 +38,8 @@ export class EidascsrComponent implements OnInit {
   roles = qcStatement.roles;
   separatorKeysCodes: number[] = [ENTER, COMMA];
   certificateTab = 0;
+  privateKeystore;
+  publicKeystore;
 
   @ViewChild('typeInput') typeInput: ElementRef<HTMLInputElement>;
   @ViewChild('auto') matAutocomplete: MatAutocomplete;
@@ -55,13 +66,14 @@ export class EidascsrComponent implements OnInit {
     this.qwaccertificates = this.formBuilder.group({
       privateKey: [''],
       csr: [''],
-      publicKey: ['']
+      publicKey: [''],
+      jwk: ['']
     });
     this.qsealcertificates = this.formBuilder.group({
       privateKey: [''],
       csr: [''],
       publicKey: [''],
-      jwks: ['']
+      jwk: ['']
     });
     this.qsealcertificates.disable();
     this.qwaccertificates.disable();
@@ -74,6 +86,9 @@ export class EidascsrComponent implements OnInit {
       startWith(''),
       map(value => this._filter(value))
     );
+
+    this.privateKeystore = jose.JWK.createKeyStore();
+    this.publicKeystore = jose.JWK.createKeyStore();
   }
 
   hasError(formGroupName: string, controlName: string, errorName: string) {
@@ -112,11 +127,12 @@ export class EidascsrComponent implements OnInit {
     ).subscribe(
       (data: CertificateResponse) => {
         if (data.type.toLowerCase() === 'qwac') {
+
           this.qwaccertificates.patchValue({
             csr: data.csr,
             publicKey: data.publicKey,
             privateKey: data.privateKey,
-            jwks: data.jwks
+            jwk: data.jwk
           });
           this.qwaccertificates.enable();
         }
@@ -125,19 +141,45 @@ export class EidascsrComponent implements OnInit {
             csr: data.csr,
             publicKey: data.publicKey,
             privateKey: data.privateKey,
-            jwks: data.jwks
+            jwk: data.jwk
           });
           this.qsealcertificates.enable();
         }
       },
       (error) => { console.log(error); },
       () => {
-        console.log('complete!');
         this.certificateTab = 0;
         if (!this.qwaccertificates.enabled) {
           this.certificateTab = 1;
         }
-        console.log( this.certificateTab );
+        const source = of([
+          {
+            privateKey: this.qwaccertificates.value.jwk,
+            publicKey: this.qwaccertificates.value.publicKey,
+          },
+          {
+            privateKey: this.qsealcertificates.value.jwk,
+            publicKey: this.qsealcertificates.value.publicKey,
+          }]);
+        const myPromise = val => {
+          if (val.privateKey) {
+            return this.privateKeystore.add(val.privateKey, 'json').then((data) => {
+              if (val.publicKey) {
+                return this.publicKeystore.add(val.publicKey, 'pem', { kid: data.kid });
+              } else {
+                return of({});
+              }
+            });
+          }
+          return of({});
+        };
+        const example = source.pipe(
+          mergeMap(q => forkJoin(...q.map(myPromise)))
+        );
+        example.subscribe(data => {
+          console.log(this.privateKeystore.toJSON(true));
+          console.log(this.publicKeystore.toJSON(true));
+        });
       }
     );
   }
@@ -250,7 +292,6 @@ export class EidascsrComponent implements OnInit {
   }
 
   private _filter(value: string): string[] {
-    console.log(value);
     const controller = this.eidascsr.controls.type;
     const filteredArray = this.allTypes.filter(type => !controller.value.includes(type));
     return filteredArray;

@@ -90,7 +90,7 @@
       </mat-card>
     </form>
   </mat-step>
-  <mat-step [stepControl]="certificates" >
+  <mat-step [stepControl]="certificates">
     <ng-template matStepLabel>
       <p (click)="createOwner()">View your Key Details</p>
     </ng-template>
@@ -160,7 +160,6 @@
         </form>
       </mat-tab>
       <mat-tab label="QSeal" [disabled]="!qsealcertificates.enabled">
-        {{ qsealcertificates.enabled }}
         <form [formGroup]="qsealcertificates" fxLayout="column">
           <mat-card class="cardPadding">
             <mat-card-header>
@@ -184,7 +183,7 @@
                     <mat-icon>content_copy</mat-icon>
                   </button>
                 </mat-form-field>
-                <mat-form-field fxFlex *ngIf="qwaccertificates.value.publicKey">
+                <mat-form-field fxFlex *ngIf="qsealcertificates.value.publicKey">
                   <textarea class="tarea" matInput placeholder="Public Key" formControlName="publicKey" readonly="true"
                     cdkTextareaAutosize cdkAutosizeMinRows="2">
                       </textarea>
@@ -192,14 +191,6 @@
                     <mat-icon>content_copy</mat-icon>
                   </button>
                 </mat-form-field>
-                <!-- <mat-form-field fxFlex>
-              <textarea class="tarea" matInput placeholder="Public / Private JWKS" formControlName="jwks"
-                readonly="true" cdkTextareaAutosize cdkAutosizeMinRows="2">
-                      </textarea>
-              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="jwksToClipoard()">
-                <mat-icon>content_copy</mat-icon>
-              </button>
-            </mat-form-field> -->
               </div>
             </mat-card-content>
             <mat-card-actions align="center">

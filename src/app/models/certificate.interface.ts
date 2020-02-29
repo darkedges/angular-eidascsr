@@ -1,7 +1,9 @@
+import { kdfWithCounter } from 'pkijs/src/common';
+
 export interface CertificateResponse {
     type: string;
     csr: string;
     privateKey: string;
     publicKey: string;
-    jwks: string;
+    jwk: string;
 }
