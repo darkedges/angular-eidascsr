@@ -17,9 +17,6 @@ import { MatAutocomplete, MatAutocompleteSelectedEvent } from '@angular/material
 import { MatChipInputEvent } from '@angular/material/chips';
 import { Observable, of, forkJoin, empty } from 'rxjs';
 import { saveAs } from 'file-saver';
-import { remove } from 'jszip';
-import { type } from 'os';
-import { resolve } from 'dns';
 
 @Component({
   selector: 'app-eidascsr',
@@ -38,6 +35,7 @@ export class EidascsrComponent implements OnInit {
   roles = qcStatement.roles;
   separatorKeysCodes: number[] = [ENTER, COMMA];
   certificateTab = 0;
+  downloadEnabled = false;
   privateKeystore;
   publicKeystore;
 
@@ -78,6 +76,7 @@ export class EidascsrComponent implements OnInit {
     this.qsealcertificates.disable();
     this.qwaccertificates.disable();
     this.certificates = this.formBuilder.group({
+      jwks: [''],
       qwaccertificates: this.qsealcertificates,
       qsealcertificates: this.qsealcertificates
     });
@@ -116,6 +115,7 @@ export class EidascsrComponent implements OnInit {
     this.qsealcertificates.reset();
     this.qsealcertificates.disable();
     this.qwaccertificates.disable();
+    this.downloadEnabled = false;
     this.eidasService.createBundle(
       countryName,
       organizationName,
@@ -177,8 +177,22 @@ export class EidascsrComponent implements OnInit {
           mergeMap(q => forkJoin(...q.map(myPromise)))
         );
         example.subscribe(data => {
-          console.log(this.privateKeystore.toJSON(true));
-          console.log(this.publicKeystore.toJSON(true));
+          let jwks = {};
+          if (this.publicKeystore.toJSON(true).keys.length > 0) {
+            jwks = JSON.stringify({
+              publicJwks: this.publicKeystore.toJSON(true),
+              privateJwks: this.privateKeystore.toJSON(true)
+            }, null, 2);
+          } else {
+            jwks = JSON.stringify({
+              privateJwks: this.privateKeystore.toJSON(true)
+            }, null, 2);
+          }
+          this.certificates.patchValue(
+            {
+              jwks
+            });
+          this.downloadEnabled = true;
         });
       }
     );
@@ -210,19 +224,28 @@ export class EidascsrComponent implements OnInit {
     return this.qsealcertificates.value.publicKey;
   }
 
-  qsealJwksToClipoard() {
-    return this.qsealcertificates.value.jwks;
+  jwksToClipoard() {
+    return this.certificates.value.jwks;
   }
 
   downloadFiles() {
     const organizationIdentifier = this.eidascsr.value.organizationIdentifier;
     const j: JSZip = new JSZip();
-    j.file(`${organizationIdentifier}.key`, this.qwaccertificates.value.privateKey);
-    j.file(`${organizationIdentifier}.csr`, this.qwaccertificates.value.csr);
-    if (this.eidascsr.value.signed) {
-      j.file(`${organizationIdentifier}.crt`, this.qwaccertificates.value.publicKey);
+    if (this.qwaccertificates.value.privateKey) {
+      j.file(`${organizationIdentifier}-qwac.key`, this.qwaccertificates.value.privateKey);
+      j.file(`${organizationIdentifier}-qwac.csr`, this.qwaccertificates.value.csr);
+      if (this.eidascsr.value.signed) {
+        j.file(`${organizationIdentifier}-qwac.crt`, this.qwaccertificates.value.publicKey);
+      }
     }
-    // j.file(`${organizationIdentifier}.json`, this.certificates.value.jwks);
+    if (this.qsealcertificates.value.privateKey) {
+      j.file(`${organizationIdentifier}-qseal.key`, this.qsealcertificates.value.privateKey);
+      j.file(`${organizationIdentifier}-qseal.csr`, this.qsealcertificates.value.csr);
+      if (this.eidascsr.value.signed) {
+        j.file(`${organizationIdentifier}-qseal.crt`, this.qsealcertificates.value.publicKey);
+      }
+    }
+    j.file(`${organizationIdentifier}.json`, this.certificates.value.jwks);
     j.generateAsync({ type: 'blob' }).then(data => {
       saveAs(data, `${organizationIdentifier}.zip`);
     });

@@ -40,15 +40,6 @@
             </mat-select>
             <mat-error *ngIf="hasError('','roles', 'required')">Roles is required</mat-error>
           </mat-form-field>
-          <!-- <mat-form-field>
-            <mat-label>Certificate Type</mat-label>
-            <mat-select formControlName="type" name="type" required [disabled]="eidascsr.get('signed').value">
-              <mat-option *ngFor="let type of types" [value]="type">
-                {{type}}
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="hasError('','type', 'required')">Certificate Type is required</mat-error>
-          </mat-form-field> -->
           <mat-form-field>
             <mat-chip-list #chipList formControlName="type">
               <mat-chip *ngFor="let type of eidascsr.get('type').value" selectable="true" removable="true"
@@ -94,14 +85,14 @@
     <ng-template matStepLabel>
       <p (click)="createOwner()">View your Key Details</p>
     </ng-template>
-    <mat-tab-group [@.disabled]="true" [selectedIndex]="certificateTab">
-      <mat-tab label="QWAC" [disabled]="!qwaccertificates.enabled">
-        <form [formGroup]="qwaccertificates" fxLayout="column">
-          <mat-card class="cardPadding">
-            <mat-card-header>
-              <mat-card-title>Your Key Details</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
+    <mat-card class="cardPadding">
+      <mat-card-header>
+        <mat-card-title>Your Key Details</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+      <mat-tab-group [@.disabled]="true" [selectedIndex]="certificateTab">
+        <mat-tab label="QWAC" [disabled]="!qwaccertificates.enabled">
+          <form [formGroup]="qwaccertificates" fxLayout="column">
               <div class="input-row" fxLayout="column" fxLayoutGap="0px">
                 <mat-form-field fxFlex>
                   <textarea class="tarea" matInput placeholder="Private Key" formControlName="privateKey"
@@ -127,45 +118,11 @@
                     <mat-icon>content_copy</mat-icon>
                   </button>
                 </mat-form-field>
-                <!-- <mat-form-field fxFlex>
-              <textarea class="tarea" matInput placeholder="Public / Private JWKS" formControlName="jwks"
-                readonly="true" cdkTextareaAutosize cdkAutosizeMinRows="2">
-                      </textarea>
-              <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="jwksToClipoard()">
-                <mat-icon>content_copy</mat-icon>
-              </button>
-            </mat-form-field> -->
               </div>
-            </mat-card-content>
-            <mat-card-actions align="center">
-              <button matStepperNext mat-raised-button color="primary" [disabled]="!(qwaccertificates.valid)"
-                (click)="downloadFiles()">Download</button>
-            </mat-card-actions>
-          </mat-card>
-          <mat-card>
-            <mat-card-header>
-              <mat-card-title>Notes:</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <ul>
-                <li>Due to limitations of <a href="https://stuk.github.io/jszip/">JSZip</a> the downloaded file is not
-                  password protected. No responsbility is accepted if this key is downloaded and used. If you want to
-                  you
-                  could always add your own password.
-                </li>
-
-              </ul>
-            </mat-card-content>
-          </mat-card>
-        </form>
-      </mat-tab>
-      <mat-tab label="QSeal" [disabled]="!qsealcertificates.enabled">
-        <form [formGroup]="qsealcertificates" fxLayout="column">
-          <mat-card class="cardPadding">
-            <mat-card-header>
-              <mat-card-title>Your Key Details</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
+          </form>
+        </mat-tab>
+        <mat-tab label="QSeal" [disabled]="!qsealcertificates.enabled">
+          <form [formGroup]="qsealcertificates" fxLayout="column">
               <div class="input-row" fxLayout="column" fxLayoutGap="0px">
                 <mat-form-field fxFlex>
                   <textarea class="tarea" matInput placeholder="Private Key" formControlName="privateKey"
@@ -192,29 +149,38 @@
                   </button>
                 </mat-form-field>
               </div>
-            </mat-card-content>
-            <mat-card-actions align="center">
-              <button matStepperNext mat-raised-button color="primary" [disabled]="!(qwaccertificates.valid)"
-                (click)="downloadFiles()">Download</button>
-            </mat-card-actions>
-          </mat-card>
-          <mat-card>
-            <mat-card-header>
-              <mat-card-title>Notes:</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <ul>
-                <li>Due to limitations of <a href="https://stuk.github.io/jszip/">JSZip</a> the downloaded file is not
-                  password protected. No responsbility is accepted if this key is downloaded and used. If you want to
-                  you
-                  could always add your own password.
-                </li>
-
-              </ul>
-            </mat-card-content>
-          </mat-card>
-        </form>
-      </mat-tab>
-    </mat-tab-group>
+          </form>
+        </mat-tab>
+      </mat-tab-group>
+      <form [formGroup]="certificates" fxLayout="column">
+      <mat-form-field fxFlex>
+        <textarea class="tarea" matInput placeholder="Public / Private JWKS" formControlName="jwks"
+          readonly="true" cdkTextareaAutosize cdkAutosizeMinRows="2">
+            </textarea>
+        <button mat-button mat-icon-button matSuffix [cdkCopyToClipboard]="jwksToClipoard()">
+          <mat-icon>content_copy</mat-icon>
+        </button>
+      </mat-form-field>
+    </form>
+    </mat-card-content>
+      <mat-card-actions align="center">
+        <button matStepperNext mat-raised-button color="primary" [disabled]="!(downloadEnabled)"
+          (click)="downloadFiles()">Download</button>
+      </mat-card-actions>
+    </mat-card>
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Notes:</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <ul>
+          <li>Due to limitations of <a href="https://stuk.github.io/jszip/">JSZip</a> the downloaded file is not
+            password protected. No responsbility is accepted if this key is downloaded and used. If you want to
+            you
+            could always add your own password.
+          </li>
+        </ul>
+      </mat-card-content>
+    </mat-card>
   </mat-step>
 </mat-horizontal-stepper>
