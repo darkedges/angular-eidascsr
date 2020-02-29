@@ -5,14 +5,17 @@ import { DefaultDataServiceConfig } from './default-data-service-config';
 import { FlexLayoutModule } from '@angular/flex-layout';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatStepperModule } from '@angular/material/stepper';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { NgcCookieConsentConfig, NgcCookieConsentModule } from 'ngx-cookieconsent';
 import { NgModule } from '@angular/core';
@@ -40,10 +43,13 @@ const cookieConfig: NgcCookieConsentConfig = {
     ReactiveFormsModule,
     FlexLayoutModule,
 
+    MatAutocompleteModule,
     MatButtonModule,
     MatCardModule,
     MatCheckboxModule,
+    MatChipsModule,
     MatInputModule,
+    MatTabsModule,
     MatToolbarModule,
     MatSelectModule,
     MatStepperModule,
@@ -60,10 +66,13 @@ const cookieConfig: NgcCookieConsentConfig = {
     FlexLayoutModule,
     HttpClientModule,
 
+    MatAutocompleteModule,
     MatButtonModule,
     MatCardModule,
     MatCheckboxModule,
+    MatChipsModule,
     MatInputModule,
+    MatTabsModule,
     MatToolbarModule,
     MatSelectModule,
     MatStepperModule,
@@ -73,6 +82,6 @@ const cookieConfig: NgcCookieConsentConfig = {
   ],
   providers: [
     { provide: DefaultDataServiceConfig, useValue: defaultDataServiceConfig }
-],
+  ],
 })
 export class SharedModule { }
