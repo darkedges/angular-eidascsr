@@ -125,76 +125,52 @@ export class EidascsrComponent implements OnInit {
       type,
       sign
     ).subscribe(
-      (data: CertificateResponse) => {
-        if (data.type.toLowerCase() === 'qwac') {
+      (responses: any[]) => {
+        responses.forEach(data => {
+          if (data.type.toLowerCase() === 'qwac') {
 
-          this.qwaccertificates.patchValue({
-            csr: data.csr,
-            publicKey: data.publicKey,
-            privateKey: data.privateKey,
-            jwk: data.jwk
-          });
-          this.qwaccertificates.enable();
-        }
-        if (data.type.toLowerCase() === 'qseal') {
-          this.qsealcertificates.patchValue({
-            csr: data.csr,
-            publicKey: data.publicKey,
-            privateKey: data.privateKey,
-            jwk: data.jwk
-          });
-          this.qsealcertificates.enable();
-        }
-      },
-      (error) => { console.log(error); },
-      () => {
+            this.qwaccertificates.patchValue({
+              csr: data.csr,
+              publicKey: data.publicKey,
+              privateKey: data.privateKey,
+              jwk: data.jwk
+            });
+            this.qwaccertificates.enable();
+          }
+          if (data.type.toLowerCase() === 'qseal') {
+            this.qsealcertificates.patchValue({
+              csr: data.csr,
+              publicKey: data.publicKey,
+              privateKey: data.privateKey,
+              jwk: data.jwk
+            });
+            this.qsealcertificates.enable();
+          }
+          if (data.type.toLowerCase() === 'jwks') {
+            let jwks = {};
+            if (data.publicJwks.keys.length > 0) {
+              jwks = JSON.stringify({
+                publicJwks: data.publicJwks,
+                privateJwks: data.privateJwks
+              }, null, 2);
+            } else {
+              jwks = JSON.stringify({
+                privateJwks: data.privateJwks
+              }, null, 2);
+            }
+            this.certificates.patchValue(
+              {
+                jwks
+              });
+            this.downloadEnabled = true;
+          }
+        });
         this.certificateTab = 0;
         if (!this.qwaccertificates.enabled) {
           this.certificateTab = 1;
         }
-        const source = of([
-          {
-            privateKey: this.qwaccertificates.value.jwk,
-            publicKey: this.qwaccertificates.value.publicKey,
-          },
-          {
-            privateKey: this.qsealcertificates.value.jwk,
-            publicKey: this.qsealcertificates.value.publicKey,
-          }]);
-        const myPromise = val => {
-          if (val.privateKey) {
-            return this.privateKeystore.add(val.privateKey, 'json').then((data) => {
-              if (val.publicKey) {
-                return this.publicKeystore.add(val.publicKey, 'pem', { kid: data.kid });
-              } else {
-                return of({});
-              }
-            });
-          }
-          return of({});
-        };
-        const example = source.pipe(
-          mergeMap(q => forkJoin(...q.map(myPromise)))
-        );
-        example.subscribe(data => {
-          let jwks = {};
-          if (this.publicKeystore.toJSON(true).keys.length > 0) {
-            jwks = JSON.stringify({
-              publicJwks: this.publicKeystore.toJSON(true),
-              privateJwks: this.privateKeystore.toJSON(true)
-            }, null, 2);
-          } else {
-            jwks = JSON.stringify({
-              privateJwks: this.privateKeystore.toJSON(true)
-            }, null, 2);
-          }
-          this.certificates.patchValue(
-            {
-              jwks
-            });
-          this.downloadEnabled = true;
-        });
-      }
+      },
+      (error) => { console.log(error); },
     );
   }
 

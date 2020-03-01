@@ -1,11 +1,14 @@
 import * as qcStatement from '../models/qcstatement.class';
 import { arrayBufferToString, toBase64 } from 'pvutils';
-import { flatMap, tap, map, mergeMap } from 'rxjs/operators';
-import { from, Observable, of, forkJoin } from 'rxjs';
+import { flatMap, tap, map, mergeMap, finalize, endWith, combineAll, mergeAll, count, ignoreElements } from 'rxjs/operators';
+import { from, Observable, of, forkJoin, defer, Subject, merge } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { PKCS10Service } from './pkcs10.service';
 import { CertificateResponse } from '../models/certificate.interface';
-import { Meta } from '@angular/platform-browser';
+import * as jose from 'node-jose';
+import { TestBed } from '@angular/core/testing';
+import { fork } from 'cluster';
+import { identifierModuleUrl } from '@angular/compiler';
 
 @Injectable({
     providedIn: 'root'
@@ -33,7 +36,13 @@ export class EIDASService {
             commonName,
             roles,
             types,
-            sign).pipe(
+            sign)
+            .pipe(
+                mergeMap(([finalResult]) =>
+                    merge(
+                        finalResult
+                    )
+                )
             );
     }
 
@@ -46,7 +55,6 @@ export class EIDASService {
         types: string[],
         sign: boolean
     ): Observable<any> {
-
         if (sign) {
             const obs = types.map(type => {
                 let privateKey;
@@ -78,11 +86,7 @@ export class EIDASService {
                         })
                     );
             });
-            return from(obs).pipe(
-                mergeMap((id, index) => {
-                    return id;
-                })
-            );
+            return this.forkJoinWithProgress(obs);
         } else {
             const obs = types.map(type => {
                 return this.pkcs10Service.createCSR(countryName, organizationName, organizationIdentifier, commonName, roles, type)
@@ -104,12 +108,61 @@ export class EIDASService {
                         })
                     );
             });
-            return from(obs).pipe(
-                mergeMap((id, index) => {
-                    return id;
+            return this.forkJoinWithProgress(obs);
+        }
+    }
+
+    forkJoinWithProgress(arrayOfObservables) {
+        return defer(() => { // here we go
+            const privateKeystore = jose.JWK.createKeyStore();
+            const publicKeystore = jose.JWK.createKeyStore();
+            let counter = 0;
+            const percent$ = new Subject();
+
+            const modilefiedObservablesList = arrayOfObservables.map(
+                (item, index) => item.pipe(
+                    flatMap(data => {
+                        return this.addtoKeyStores(data, privateKeystore, publicKeystore);
+                    },
+                        (outerValue, innerValue) => (
+                            { meta: outerValue, publicKey: innerValue })
+                    ),
+                    flatMap((data: any) => {
+                        return of(data.meta);
+                    }),
+                    finalize(() => {
+                        const percentValue = ++counter * 100 / arrayOfObservables.length;
+                        percent$.next(percentValue);
+                    })
+                )
+            );
+
+            const finalResult$ = forkJoin(modilefiedObservablesList).pipe(
+                map(data => {
+                    data.push({
+                        type: 'jwks',
+                        publicJwks: publicKeystore.toJSON(true),
+                        privateJwks: privateKeystore.toJSON(true)
+                    });
+                    return data;
                 })
             );
+
+            return of([finalResult$]);
+        });
+    }
+
+    addtoKeyStores(val, privateKeystore, publicKeystore) {
+        if (val.jwk) {
+            return privateKeystore.add(val.jwk, 'json').then((data) => {
+                if (val.publicKey) {
+                    return publicKeystore.add(val.publicKey, 'pem', { kid: data.kid });
+                } else {
+                    return of({});
+                }
+            });
         }
+        return of({});
     }
 
     formatPEM(pemString) {
