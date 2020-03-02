@@ -126,6 +126,7 @@ export class EidascsrComponent implements OnInit {
       sign
     ).subscribe(
       (responses: any[]) => {
+        console.log(responses);
         responses.forEach(data => {
           if (data.type.toLowerCase() === 'qwac') {
 

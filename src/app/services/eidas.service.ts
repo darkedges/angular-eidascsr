@@ -1,6 +1,6 @@
 import * as qcStatement from '../models/qcstatement.class';
 import { arrayBufferToString, toBase64 } from 'pvutils';
-import { flatMap, tap, map, mergeMap, finalize, endWith, combineAll, mergeAll, count, ignoreElements } from 'rxjs/operators';
+import { flatMap, tap, map, mergeMap, finalize, endWith, combineAll, mergeAll, count, ignoreElements, pluck } from 'rxjs/operators';
 import { from, Observable, of, forkJoin, defer, Subject, merge } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { PKCS10Service } from './pkcs10.service';
@@ -36,14 +36,7 @@ export class EIDASService {
             commonName,
             roles,
             types,
-            sign)
-            .pipe(
-                mergeMap(([finalResult]) =>
-                    merge(
-                        finalResult
-                    )
-                )
-            );
+            sign);
     }
 
     createBundleCore(
@@ -75,14 +68,14 @@ export class EIDASService {
                             (outerValue, innerValue) => (
                                 { meta: outerValue, publicKey: innerValue, metaData: { privateKey, csr, jwk } })
                         ),
-                        flatMap(data => {
-                            return of({
+                        map(data => {
+                            return {
                                 type,
                                 csr: data.metaData.csr,
                                 privateKey: data.metaData.privateKey,
                                 jwk: data.metaData.jwk,
                                 publicKey: data.publicKey.result.certificate,
-                            } as CertificateResponse);
+                            } as CertificateResponse;
                         })
                     );
             });
@@ -91,7 +84,7 @@ export class EIDASService {
             const obs = types.map(type => {
                 return this.pkcs10Service.createCSR(countryName, organizationName, organizationIdentifier, commonName, roles, type)
                     .pipe(
-                        flatMap(data => {
+                        map(data => {
                             let privateKey = '-----BEGIN PRIVATE KEY-----\n';
                             privateKey = `${privateKey}${this.formatPEM(toBase64(arrayBufferToString(data.pk.pkcs8)))}`;
                             privateKey = `${privateKey}\n-----END PRIVATE KEY-----`;
@@ -99,12 +92,12 @@ export class EIDASService {
                             csr = `${csr}${this.formatPEM(toBase64(arrayBufferToString(data.csr)))}`;
                             csr = `${csr}\n-----END NEW CERTIFICATE REQUEST-----`;
                             const jwk = data.pk.jwk;
-                            return of({
+                            return {
                                 type,
                                 csr,
                                 privateKey,
                                 jwk
-                            } as CertificateResponse);
+                            } as CertificateResponse;
                         })
                     );
             });
@@ -113,42 +106,32 @@ export class EIDASService {
     }
 
     forkJoinWithProgress(arrayOfObservables) {
-        return defer(() => { // here we go
+        return defer(() => {
             const privateKeystore = jose.JWK.createKeyStore();
             const publicKeystore = jose.JWK.createKeyStore();
-            let counter = 0;
-            const percent$ = new Subject();
 
             const modilefiedObservablesList = arrayOfObservables.map(
                 (item, index) => item.pipe(
-                    flatMap(data => {
-                        return this.addtoKeyStores(data, privateKeystore, publicKeystore);
-                    },
-                        (outerValue, innerValue) => (
-                            { meta: outerValue, publicKey: innerValue })
-                    ),
-                    flatMap((data: any) => {
-                        return of(data.meta);
-                    }),
-                    finalize(() => {
-                        const percentValue = ++counter * 100 / arrayOfObservables.length;
-                        percent$.next(percentValue);
-                    })
+                    mergeMap((outerValue, outerIndex) =>
+                        from(this.addtoKeyStores(outerValue, privateKeystore, publicKeystore)).pipe(
+                            map((innerValue, innerIndex) => {
+                                return outerValue;
+                            })
+                        )
+                    )
                 )
             );
 
             const finalResult$ = forkJoin(modilefiedObservablesList).pipe(
-                map(data => {
-                    data.push({
-                        type: 'jwks',
-                        publicJwks: publicKeystore.toJSON(true),
-                        privateJwks: privateKeystore.toJSON(true)
-                    });
-                    return data;
-                })
+                map(data => data.concat([{
+                    type: 'jwks',
+                    publicJwks: publicKeystore.toJSON(true),
+                    privateJwks: privateKeystore.toJSON(true)
+                }])
+                )
             );
 
-            return of([finalResult$]);
+            return finalResult$;
         });
     }
 
